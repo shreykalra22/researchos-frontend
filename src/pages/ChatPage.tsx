@@ -1,3 +1,5 @@
+import Sidebar from "../components/layout/Sidebar";
+
 import { useEffect, useRef, useState } from "react";
 
 import { v4 as uuidv4 } from "uuid";
@@ -6,9 +8,7 @@ import MessageBubble from "../components/chat/MessageBubble";
 
 import { sendChatMessage } from "../api/chatApi";
 
-import type {
-  ChatMessage,
-} from "../types/chat";
+import type { ChatMessage } from "../types/chat";
 
 export default function ChatPage() {
 
@@ -124,170 +124,170 @@ export default function ChatPage() {
         bg-background
         text-white
         flex
-        flex-col
+        overflow-hidden
       "
     >
 
-      {/* HEADER */}
+      {/* SIDEBAR */}
 
-      <header
+      <Sidebar />
+
+      {/* MAIN CONTENT */}
+
+      <div
         className="
-          border-b
-          border-border
-          px-8
-          py-5
-          backdrop-blur-md
-          sticky
-          top-0
-          z-10
-          bg-background/90
+          flex-1
+          flex
+          flex-col
         "
       >
 
-        <div
+        {/* HEADER */}
+
+        <header
           className="
-            max-w-5xl
-            mx-auto
-            flex
-            items-center
-            justify-between
+            border-b
+            border-border
+            px-8
+            py-5
+            backdrop-blur-md
+            bg-background/90
           "
         >
-
-          <h1
-            className="
-              text-2xl
-              font-bold
-              tracking-tight
-            "
-          >
-            ResearchOS AI Workspace
-          </h1>
 
           <div
             className="
-              text-sm
-              text-gray-400
+              max-w-4xl
+              mx-auto
+              w-full
             "
           >
-            Enterprise RAG Platform
+
+            <h1
+              className="
+                text-2xl
+                font-bold
+              "
+            >
+              AI Research Chat
+            </h1>
+
+            <p
+              className="
+                text-gray-400
+                mt-1
+              "
+            >
+              Conversational Retrieval-Augmented Generation
+            </p>
+
           </div>
 
-        </div>
+        </header>
 
-      </header>
+        {/* CHAT AREA */}
 
-      {/* CHAT SECTION */}
-
-      <main
-        className="
-          flex-1
-          overflow-y-auto
-        "
-      >
-
-        <div
+        <main
           className="
-            max-w-5xl
-            mx-auto
-            px-6
-            py-10
-            space-y-8
+            flex-1
+            overflow-y-auto
           "
         >
 
-          {/* EMPTY STATE */}
+          <div
+            className="
+              max-w-4xl
+              mx-auto
+              px-6
+              py-10
+              space-y-8
+            "
+          >
 
-          {messages.length === 0 && (
+            {/* EMPTY STATE */}
 
-            <div
-              className="
-                text-center
-                mt-24
-              "
-            >
-
-              <h2
-                className="
-                  text-4xl
-                  font-bold
-                  mb-4
-                "
-              >
-                Welcome to ResearchOS
-              </h2>
-
-              <p
-                className="
-                  text-gray-400
-                  text-lg
-                "
-              >
-                Ask questions about your uploaded documents.
-              </p>
-
-            </div>
-
-          )}
-
-          {/* CHAT MESSAGES */}
-
-          {messages.map((message) => (
-
-            <MessageBubble
-              key={message.id}
-              message={message}
-            />
-
-          ))}
-
-          {/* THINKING */}
-
-          {loading && (
-
-            <div className="flex justify-start">
+            {messages.length === 0 && (
 
               <div
                 className="
-                  bg-secondary
-                  border
-                  border-border
-                  px-5
-                  py-4
-                  rounded-2xl
-                  animate-pulse
+                  text-center
+                  mt-24
                 "
               >
-                Thinking...
+
+                <h2
+                  className="
+                    text-5xl
+                    font-bold
+                    mb-5
+                    tracking-tight
+                  "
+                >
+                  ResearchOS
+                </h2>
+
+                <p
+                  className="
+                    text-gray-400
+                    text-lg
+                  "
+                >
+                  Ask questions across your enterprise documents.
+                </p>
+
               </div>
 
-            </div>
+            )}
 
-          )}
+            {/* CHAT MESSAGES */}
 
-          <div ref={bottomRef} />
+            {messages.map((message) => (
 
-        </div>
+              <MessageBubble
+                key={message.id}
+                message={message}
+              />
 
-      </main>
+            ))}
 
-      {/* INPUT SECTION */}
+            {/* THINKING */}
 
-      <footer
-        className="
-          border-t
-          border-border
-          bg-background/90
-          backdrop-blur-md
-          sticky
-          bottom-0
-        "
-      >
+            {loading && (
 
-        <div
+              <div className="flex justify-start">
+
+                <div
+                  className="
+                    bg-secondary
+                    border
+                    border-border
+                    px-5
+                    py-4
+                    rounded-2xl
+                    animate-pulse
+                  "
+                >
+                  Thinking...
+                </div>
+
+              </div>
+
+            )}
+
+            <div ref={bottomRef} />
+
+          </div>
+
+        </main>
+
+        {/* INPUT */}
+
+        <footer
           className="
-            max-w-5xl
-            mx-auto
+            border-t
+            border-border
+            bg-background/90
+            backdrop-blur-md
             px-6
             py-5
           "
@@ -295,13 +295,13 @@ export default function ChatPage() {
 
           <div
             className="
+              max-w-4xl
+              mx-auto
               flex
               gap-4
               items-end
             "
           >
-
-            {/* INPUT */}
 
             <textarea
               value={question}
@@ -337,13 +337,9 @@ export default function ChatPage() {
                 outline-none
                 focus:border-primary
                 transition
-                disabled:opacity-50
                 min-h-[60px]
-                max-h-[200px]
               "
             />
-
-            {/* BUTTON */}
 
             <button
               onClick={handleAsk}
@@ -355,8 +351,6 @@ export default function ChatPage() {
                 bg-primary
                 hover:opacity-90
                 transition
-                disabled:opacity-50
-                disabled:cursor-not-allowed
                 font-medium
               "
             >
@@ -367,9 +361,9 @@ export default function ChatPage() {
 
           </div>
 
-        </div>
+        </footer>
 
-      </footer>
+      </div>
 
     </div>
   );
