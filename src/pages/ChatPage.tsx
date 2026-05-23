@@ -1,45 +1,115 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import {
-  sendChatMessage,
-} from "../api/chatApi";
+import { v4 as uuidv4 } from "uuid";
+
+import { sendChatMessage } from "../api/chatApi";
+
+import type {
+  ChatMessage,
+} from "../types/chat";
 
 export default function ChatPage() {
 
   const [question, setQuestion] =
     useState("");
 
-  const [answer, setAnswer] =
-    useState("");
-
   const [loading, setLoading] =
     useState(false);
 
+  const [messages, setMessages] =
+    useState<ChatMessage[]>([]);
+
+  const bottomRef =
+    useRef<HTMLDivElement | null>(null);
+
+  // ==========================================
+  // AUTO SCROLL
+  // ==========================================
+
+  useEffect(() => {
+
+    bottomRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+
+  }, [messages, loading]);
+
+  // ==========================================
+  // SEND MESSAGE
+  // ==========================================
+
   async function handleAsk() {
 
+    // Prevent empty messages
     if (!question.trim()) return;
+
+    // Prevent multiple simultaneous requests
+    if (loading) return;
+
+    const currentQuestion =
+      question.trim();
+
+    // Create user message
+    const userMessage: ChatMessage = {
+      id: uuidv4(),
+      role: "user",
+      content: currentQuestion,
+    };
+
+    // Add user message immediately
+    setMessages((prev) => [
+      ...prev,
+      userMessage,
+    ]);
+
+    // Clear input
+    setQuestion("");
 
     try {
 
       setLoading(true);
 
+      // ==========================================
+      // API REQUEST
+      // ==========================================
+
       const response =
         await sendChatMessage({
-          query: question,
+          query: currentQuestion,
           session_id: "frontend-demo",
         });
 
-      setAnswer(
-        response.data.answer
-      );
+      // ==========================================
+      // ASSISTANT MESSAGE
+      // ==========================================
+
+      const assistantMessage: ChatMessage = {
+        id: uuidv4(),
+        role: "assistant",
+        content:
+          response.data.answer,
+      };
+
+      setMessages((prev) => [
+        ...prev,
+        assistantMessage,
+      ]);
 
     } catch (error) {
 
       console.error(error);
 
-      setAnswer(
-        "Failed to connect to backend."
-      );
+      const errorMessage: ChatMessage = {
+        id: uuidv4(),
+        role: "assistant",
+        content:
+          "Failed to connect to backend.",
+      };
+
+      setMessages((prev) => [
+        ...prev,
+        errorMessage,
+      ]);
 
     } finally {
 
@@ -47,68 +117,194 @@ export default function ChatPage() {
     }
   }
 
+  // ==========================================
+  // UI
+  // ==========================================
+
   return (
-    <div className="flex flex-col items-center justify-center flex-1 gap-6 px-6">
 
-      <h1 className="text-4xl font-bold">
+    <div
+      className="
+        flex
+        flex-col
+        h-screen
+        bg-background
+        text-white
+      "
+    >
+
+      {/* HEADER */}
+
+      <div
+        className="
+          border-b
+          border-border
+          px-6
+          py-4
+          text-xl
+          font-semibold
+        "
+      >
         ResearchOS AI Workspace
-      </h1>
+      </div>
 
-      <div className="w-full max-w-2xl flex gap-3">
+      {/* CHAT AREA */}
 
-        <input
-          value={question}
-          onChange={(e) =>
-            setQuestion(e.target.value)
-          }
-          placeholder="Ask anything about your documents..."
+      <div
+        className="
+          flex-1
+          overflow-y-auto
+          px-6
+          py-6
+        "
+      >
+
+        <div
           className="
-            flex-1
-            px-4
-            py-3
-            rounded-xl
-            bg-secondary
-            border
-            border-border
-            text-white
-            outline-none
-          "
-        />
-
-        <button
-          onClick={handleAsk}
-          disabled={loading}
-          className="
-            px-6
-            py-3
-            rounded-xl
-            bg-primary
-            hover:opacity-90
-            transition
+            max-w-4xl
+            mx-auto
+            space-y-6
           "
         >
-          {loading ? "Thinking..." : "Ask"}
-        </button>
+
+          {messages.map((message) => (
+
+            <div
+              key={message.id}
+              className={`
+                flex
+                ${
+                  message.role === "user"
+                    ? "justify-end"
+                    : "justify-start"
+                }
+              `}
+            >
+
+              <div
+                className={`
+                  max-w-2xl
+                  px-5
+                  py-4
+                  rounded-2xl
+                  leading-7
+                  whitespace-pre-wrap
+                  shadow-md
+                  ${
+                    message.role === "user"
+                      ? "bg-primary text-white"
+                      : "bg-secondary border border-border text-gray-100"
+                  }
+                `}
+              >
+                {message.content}
+              </div>
+
+            </div>
+
+          ))}
+
+          {/* THINKING STATE */}
+
+          {loading && (
+
+            <div className="flex justify-start">
+
+              <div
+                className="
+                  bg-secondary
+                  border
+                  border-border
+                  px-5
+                  py-4
+                  rounded-2xl
+                  animate-pulse
+                "
+              >
+                Thinking...
+              </div>
+
+            </div>
+
+          )}
+
+          <div ref={bottomRef} />
+
+        </div>
 
       </div>
 
-      {answer && (
+      {/* INPUT AREA */}
+
+      <div
+        className="
+          border-t
+          border-border
+          p-6
+        "
+      >
+
         <div
           className="
-            w-full
-            max-w-2xl
-            p-6
-            rounded-2xl
-            bg-secondary
-            border
-            border-border
-            text-gray-200
-            leading-7
+            max-w-4xl
+            mx-auto
+            flex
+            gap-4
           "
         >
-          {answer}
+
+          <input
+            value={question}
+            disabled={loading}
+            onChange={(e) =>
+              setQuestion(e.target.value)
+            }
+            onKeyDown={(e) => {
+
+              if (
+                e.key === "Enter" &&
+                !loading
+              ) {
+                handleAsk();
+              }
+
+            }}
+            placeholder="Ask anything about your documents..."
+            className="
+              flex-1
+              px-5
+              py-4
+              rounded-2xl
+              bg-secondary
+              border
+              border-border
+              outline-none
+              disabled:opacity-50
+            "
+          />
+
+          <button
+            onClick={handleAsk}
+            disabled={loading}
+            className="
+              px-6
+              py-4
+              rounded-2xl
+              bg-primary
+              hover:opacity-90
+              transition
+              disabled:opacity-50
+              disabled:cursor-not-allowed
+            "
+          >
+            {loading
+              ? "Thinking..."
+              : "Send"}
+          </button>
+
         </div>
-      )}
+
+      </div>
 
     </div>
   );
