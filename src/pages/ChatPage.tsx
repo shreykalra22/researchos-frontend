@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { v4 as uuidv4 } from "uuid";
 
+import MessageBubble from "../components/chat/MessageBubble";
+
 import { sendChatMessage } from "../api/chatApi";
 
 import type {
@@ -40,29 +42,30 @@ export default function ChatPage() {
 
   async function handleAsk() {
 
-    // Prevent empty messages
+    // Prevent empty message
     if (!question.trim()) return;
 
-    // Prevent multiple simultaneous requests
+    // Prevent request spam
     if (loading) return;
 
     const currentQuestion =
       question.trim();
 
-    // Create user message
+    // ==========================================
+    // USER MESSAGE
+    // ==========================================
+
     const userMessage: ChatMessage = {
       id: uuidv4(),
       role: "user",
       content: currentQuestion,
     };
 
-    // Add user message immediately
     setMessages((prev) => [
       ...prev,
       userMessage,
     ]);
 
-    // Clear input
     setQuestion("");
 
     try {
@@ -88,6 +91,8 @@ export default function ChatPage() {
         role: "assistant",
         content:
           response.data.answer,
+        sources:
+          response.data.sources,
       };
 
       setMessages((prev) => [
@@ -167,44 +172,18 @@ export default function ChatPage() {
           "
         >
 
+          {/* CHAT MESSAGES */}
+
           {messages.map((message) => (
 
-            <div
+            <MessageBubble
               key={message.id}
-              className={`
-                flex
-                ${
-                  message.role === "user"
-                    ? "justify-end"
-                    : "justify-start"
-                }
-              `}
-            >
-
-              <div
-                className={`
-                  max-w-2xl
-                  px-5
-                  py-4
-                  rounded-2xl
-                  leading-7
-                  whitespace-pre-wrap
-                  shadow-md
-                  ${
-                    message.role === "user"
-                      ? "bg-primary text-white"
-                      : "bg-secondary border border-border text-gray-100"
-                  }
-                `}
-              >
-                {message.content}
-              </div>
-
-            </div>
+              message={message}
+            />
 
           ))}
 
-          {/* THINKING STATE */}
+          {/* LOADING MESSAGE */}
 
           {loading && (
 
@@ -227,6 +206,8 @@ export default function ChatPage() {
             </div>
 
           )}
+
+          {/* AUTO SCROLL TARGET */}
 
           <div ref={bottomRef} />
 
@@ -252,6 +233,8 @@ export default function ChatPage() {
             gap-4
           "
         >
+
+          {/* INPUT */}
 
           <input
             value={question}
@@ -282,6 +265,8 @@ export default function ChatPage() {
               disabled:opacity-50
             "
           />
+
+          {/* BUTTON */}
 
           <button
             onClick={handleAsk}
