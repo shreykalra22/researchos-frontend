@@ -1,60 +1,49 @@
-import Sidebar from "../components/layout/Sidebar";
-
-import { useEffect, useRef, useState } from "react";
+import {
+  useState,
+} from "react";
 
 import { v4 as uuidv4 } from "uuid";
 
-import MessageBubble from "../components/chat/MessageBubble";
+import Sidebar from "../components/layout/Sidebar";
 
-import { sendChatMessage } from "../api/chatApi";
+import ChatWindow from "../components/chat/ChatWindow";
+import ChatInput from "../components/chat/ChatInput";
+import ChatMessage from "../components/chat/ChatMessage";
+import EmptyState from "../components/chat/EmptyState";
+import TypingIndicator from "../components/chat/TypingIndicator";
 
-import type { ChatMessage } from "../types/chat";
+import { askQuestion } from "../services/chatApi";
+
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
 
 export default function ChatPage() {
 
-  const [question, setQuestion] =
-    useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
 
-  const [loading, setLoading] =
-    useState(false);
+  const [input, setInput] = useState("");
 
-  const [messages, setMessages] =
-    useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const bottomRef =
-    useRef<HTMLDivElement | null>(null);
+  const sessionId = "frontend-demo";
 
-  // ==========================================
-  // AUTO SCROLL
-  // ==========================================
-
-  useEffect(() => {
-
-    bottomRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
-
-  }, [messages, loading]);
-
-  // ==========================================
+  // ====================================================
   // SEND MESSAGE
-  // ==========================================
+  // ====================================================
 
-  async function handleAsk() {
+  const handleSend = async () => {
 
-    if (!question.trim()) return;
+    if (!input.trim() || loading) {
+      return;
+    }
 
-    if (loading) return;
-
-    const currentQuestion =
-      question.trim();
-
-    // USER MESSAGE
-
-    const userMessage: ChatMessage = {
+    const userMessage: Message = {
       id: uuidv4(),
       role: "user",
-      content: currentQuestion,
+      content: input,
     };
 
     setMessages((prev) => [
@@ -62,27 +51,23 @@ export default function ChatPage() {
       userMessage,
     ]);
 
-    setQuestion("");
+    const currentInput = input;
+
+    setInput("");
+
+    setLoading(true);
 
     try {
 
-      setLoading(true);
+      const response = await askQuestion({
+        query: currentInput,
+        session_id: sessionId,
+      });
 
-      const response =
-        await sendChatMessage({
-          query: currentQuestion,
-          session_id: "frontend-demo",
-        });
-
-      // ASSISTANT MESSAGE
-
-      const assistantMessage: ChatMessage = {
+      const assistantMessage: Message = {
         id: uuidv4(),
         role: "assistant",
-        content:
-          response.data.answer,
-        sources:
-          response.data.sources,
+        content: response.answer,
       };
 
       setMessages((prev) => [
@@ -92,9 +77,7 @@ export default function ChatPage() {
 
     } catch (error) {
 
-      console.error(error);
-
-      const errorMessage: ChatMessage = {
+      const errorMessage: Message = {
         id: uuidv4(),
         role: "assistant",
         content:
@@ -106,24 +89,28 @@ export default function ChatPage() {
         errorMessage,
       ]);
 
+      console.error(error);
+
     } finally {
 
       setLoading(false);
-    }
-  }
 
-  // ==========================================
+    }
+
+  };
+
+  // ====================================================
   // UI
-  // ==========================================
+  // ====================================================
 
   return (
 
     <div
       className="
-        h-screen
-        bg-background
-        text-white
         flex
+        h-screen
+        bg-[#020817]
+        text-white
         overflow-hidden
       "
     >
@@ -132,13 +119,14 @@ export default function ChatPage() {
 
       <Sidebar />
 
-      {/* MAIN CONTENT */}
+      {/* MAIN CHAT AREA */}
 
-      <div
+      <main
         className="
           flex-1
           flex
           flex-col
+          overflow-hidden
         "
       >
 
@@ -148,222 +136,76 @@ export default function ChatPage() {
           className="
             border-b
             border-border
-            px-8
-            py-5
-            backdrop-blur-md
-            bg-background/90
+            px-10
+            py-6
+            bg-primary/80
+            backdrop-blur-xl
           "
         >
 
-          <div
+          <h1
             className="
-              max-w-4xl
-              mx-auto
-              w-full
+              text-2xl
+              font-bold
             "
           >
+            AI Research Chat
+          </h1>
 
-            <h1
-              className="
-                text-2xl
-                font-bold
-              "
-            >
-              AI Research Chat
-            </h1>
-
-            <p
-              className="
-                text-gray-400
-                mt-1
-              "
-            >
-              Conversational Retrieval-Augmented Generation
-            </p>
-
-          </div>
+          <p
+            className="
+              text-sm
+              text-gray-400
+              mt-1
+            "
+          >
+            Conversational Retrieval-Augmented Generation
+          </p>
 
         </header>
 
-        {/* CHAT AREA */}
+        {/* CHAT CONTENT */}
 
-        <main
-          className="
-            flex-1
-            overflow-y-auto
-          "
-        >
+        {messages.length === 0 ? (
 
-          <div
-            className="
-              max-w-4xl
-              mx-auto
-              px-6
-              py-10
-              space-y-8
-            "
-          >
+          <div className="flex-1">
 
-            {/* EMPTY STATE */}
+            <EmptyState />
 
-            {messages.length === 0 && (
+          </div>
 
-              <div
-                className="
-                  text-center
-                  mt-24
-                "
-              >
+        ) : (
 
-                <h2
-                  className="
-                    text-5xl
-                    font-bold
-                    mb-5
-                    tracking-tight
-                  "
-                >
-                  ResearchOS
-                </h2>
-
-                <p
-                  className="
-                    text-gray-400
-                    text-lg
-                  "
-                >
-                  Ask questions across your enterprise documents.
-                </p>
-
-              </div>
-
-            )}
-
-            {/* CHAT MESSAGES */}
+          <ChatWindow>
 
             {messages.map((message) => (
 
-              <MessageBubble
+              <ChatMessage
                 key={message.id}
-                message={message}
+                role={message.role}
+                content={message.content}
               />
 
             ))}
 
-            {/* THINKING */}
-
             {loading && (
-
-              <div className="flex justify-start">
-
-                <div
-                  className="
-                    bg-secondary
-                    border
-                    border-border
-                    px-5
-                    py-4
-                    rounded-2xl
-                    animate-pulse
-                  "
-                >
-                  Thinking...
-                </div>
-
-              </div>
-
+              <TypingIndicator />
             )}
 
-            <div ref={bottomRef} />
+          </ChatWindow>
 
-          </div>
-
-        </main>
+        )}
 
         {/* INPUT */}
 
-        <footer
-          className="
-            border-t
-            border-border
-            bg-background/90
-            backdrop-blur-md
-            px-6
-            py-5
-          "
-        >
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          onSend={handleSend}
+          loading={loading}
+        />
 
-          <div
-            className="
-              max-w-4xl
-              mx-auto
-              flex
-              gap-4
-              items-end
-            "
-          >
-
-            <textarea
-              value={question}
-              disabled={loading}
-              rows={1}
-              onChange={(e) =>
-                setQuestion(e.target.value)
-              }
-              onKeyDown={(e) => {
-
-                if (
-                  e.key === "Enter" &&
-                  !e.shiftKey &&
-                  !loading
-                ) {
-
-                  e.preventDefault();
-
-                  handleAsk();
-                }
-
-              }}
-              placeholder="Ask anything about your documents..."
-              className="
-                flex-1
-                resize-none
-                px-5
-                py-4
-                rounded-2xl
-                bg-secondary
-                border
-                border-border
-                outline-none
-                focus:border-primary
-                transition
-                min-h-[60px]
-              "
-            />
-
-            <button
-              onClick={handleAsk}
-              disabled={loading}
-              className="
-                px-7
-                py-4
-                rounded-2xl
-                bg-primary
-                hover:opacity-90
-                transition
-                font-medium
-              "
-            >
-              {loading
-                ? "Thinking..."
-                : "Send"}
-            </button>
-
-          </div>
-
-        </footer>
-
-      </div>
+      </main>
 
     </div>
   );
