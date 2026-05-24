@@ -1,9 +1,12 @@
-import { useState, useRef, useEffect } from "react";
-import EmptyState from "../components/EmptyState";
-import ChatWindow from "../components/ChatWindow";
-import ChatInput from "../components/ChatInput";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-export interface Message {
+import { askQuestion } from "../services/chatApi";
+
+interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
@@ -11,58 +14,276 @@ export interface Message {
 }
 
 export default function ChatPage() {
+
   const [messages, setMessages] = useState<Message[]>([]);
+
   const [input, setInput] = useState("");
+
   const [loading, setLoading] = useState(false);
 
+  const messagesEndRef =
+    useRef<HTMLDivElement | null>(null);
+
+  // ====================================================
+  // AUTO SCROLL
+  // ====================================================
+
+  useEffect(() => {
+
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+
+  }, [messages, loading]);
+
+  // ====================================================
+  // SEND MESSAGE
+  // ====================================================
+
   const handleSend = async () => {
-    const text = input.trim();
-    if (!text || loading) return;
-    setInput("");
+
+    if (!input.trim() || loading) return;
 
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
-      content: text,
+      content: input,
       timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, userMsg]);
+
+    setMessages((prev) => [
+      ...prev,
+      userMsg,
+    ]);
+
+    const currentInput = input;
+
+    setInput("");
+
     setLoading(true);
 
-    // Simulate response — replace with real API call
-    setTimeout(() => {
+    try {
+
+      const response = await askQuestion({
+        query: currentInput,
+        session_id: "research-session",
+      });
+
       const assistantMsg: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content:
-          "I found relevant information in your documents. Based on the retrieved context, here is a grounded answer with citations from the indexed PDFs. This demonstrates the full-width layout working correctly across the entire viewport.",
+        content: response.answer,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, assistantMsg]);
+
+      setMessages((prev) => [
+        ...prev,
+        assistantMsg,
+      ]);
+
+    } catch (error) {
+
+      console.error(error);
+
+      const errorMsg: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content:
+          "Failed to connect to backend.",
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [
+        ...prev,
+        errorMsg,
+      ]);
+
+    } finally {
+
       setLoading(false);
-    }, 1200);
+
+    }
+
   };
 
+  // ====================================================
+  // UI
+  // ====================================================
+
   return (
-    <div className="flex flex-col w-full h-full min-w-0 overflow-hidden">
-      {/* Scrollable message area */}
-      <div className="flex-1 overflow-y-auto min-h-0 w-full">
-        {messages.length === 0 ? (
-          <EmptyState onPromptClick={(p) => { setInput(p); }} />
-        ) : (
-          <ChatWindow messages={messages} loading={loading} />
-        )}
+
+    <div
+      className="
+        flex
+        flex-col
+        h-screen
+        bg-black
+        text-white
+      "
+    >
+
+      {/* CHAT AREA */}
+
+      <div
+        className="
+          flex-1
+          overflow-y-auto
+          px-6
+          py-10
+        "
+      >
+
+        <div
+          className="
+            max-w-4xl
+            mx-auto
+            space-y-8
+          "
+        >
+
+          {messages.map((message) => (
+
+            <div
+              key={message.id}
+              className={`
+                flex
+                ${message.role === "user"
+                  ? "justify-end"
+                  : "justify-start"}
+              `}
+            >
+
+              <div
+                className={`
+                  max-w-2xl
+                  rounded-2xl
+                  px-5
+                  py-4
+                  text-sm
+                  leading-7
+                  border
+                  whitespace-pre-wrap
+
+                  ${message.role === "user"
+                    ? `
+                      bg-purple-600
+                      border-purple-500
+                      text-white
+                    `
+                    : `
+                      bg-zinc-900
+                      border-zinc-800
+                      text-zinc-200
+                    `
+                  }
+                `}
+              >
+
+                {message.content}
+
+              </div>
+
+            </div>
+
+          ))}
+
+          {loading && (
+
+            <div className="flex justify-start">
+
+              <div
+                className="
+                  bg-zinc-900
+                  border
+                  border-zinc-800
+                  rounded-2xl
+                  px-5
+                  py-4
+                  text-zinc-400
+                  text-sm
+                "
+              >
+                Thinking...
+              </div>
+
+            </div>
+
+          )}
+
+          {/* AUTO SCROLL TARGET */}
+
+          <div ref={messagesEndRef} />
+
+        </div>
+
       </div>
 
-      {/* Pinned input */}
-      <div className="flex-shrink-0 w-full border-t border-[#1a1a1a] bg-[#0a0a0a]">
-        <ChatInput
-          value={input}
-          onChange={setInput}
-          onSubmit={handleSend}
-          loading={loading}
-        />
+      {/* INPUT */}
+
+      <div
+        className="
+          border-t
+          border-zinc-900
+          p-4
+          bg-black
+        "
+      >
+
+        <div
+          className="
+            max-w-4xl
+            mx-auto
+            flex
+            gap-3
+          "
+        >
+
+          <input
+            type="text"
+            value={input}
+            onChange={(e) =>
+              setInput(e.target.value)
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleSend();
+              }
+            }}
+            placeholder="Ask anything about your documents..."
+            className="
+              flex-1
+              bg-zinc-900
+              border
+              border-zinc-800
+              rounded-xl
+              px-4
+              py-3
+              outline-none
+              text-white
+              placeholder:text-zinc-500
+            "
+          />
+
+          <button
+            onClick={handleSend}
+            disabled={loading}
+            className="
+              px-6
+              rounded-xl
+              bg-purple-600
+              hover:bg-purple-500
+              transition
+              text-white
+              disabled:opacity-50
+            "
+          >
+            Send
+          </button>
+
+        </div>
+
       </div>
+
     </div>
   );
 }
