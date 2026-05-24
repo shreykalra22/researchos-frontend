@@ -6,11 +6,19 @@ import {
 
 import { askQuestion } from "../services/chatApi";
 
+import SourceList from "../components/SourceList";
+
+interface Source {
+  page_number: number;
+  source: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  sources?: Source[];
 }
 
 export default function ChatPage() {
@@ -74,6 +82,7 @@ export default function ChatPage() {
         role: "assistant",
         content: response.answer,
         timestamp: new Date(),
+        sources: response.sources || [],
       };
 
       setMessages((prev) => [
@@ -180,6 +189,13 @@ export default function ChatPage() {
               >
 
                 {message.content}
+
+                {message.role === "assistant" &&
+                 message.sources && (
+                  <SourceList
+                    sources={message.sources}
+                  />
+                )}
 
               </div>
 
