@@ -1,212 +1,68 @@
-import {
-  useState,
-} from "react";
+import { useState, useRef, useEffect } from "react";
+import EmptyState from "../components/EmptyState";
+import ChatWindow from "../components/ChatWindow";
+import ChatInput from "../components/ChatInput";
 
-import { v4 as uuidv4 } from "uuid";
-
-import Sidebar from "../components/layout/Sidebar";
-
-import ChatWindow from "../components/chat/ChatWindow";
-import ChatInput from "../components/chat/ChatInput";
-import ChatMessage from "../components/chat/ChatMessage";
-import EmptyState from "../components/chat/EmptyState";
-import TypingIndicator from "../components/chat/TypingIndicator";
-
-import { askQuestion } from "../services/chatApi";
-
-interface Message {
+export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  timestamp: Date;
 }
 
 export default function ChatPage() {
-
   const [messages, setMessages] = useState<Message[]>([]);
-
   const [input, setInput] = useState("");
-
   const [loading, setLoading] = useState(false);
 
-  const sessionId = "frontend-demo";
-
-  // ====================================================
-  // SEND MESSAGE
-  // ====================================================
-
   const handleSend = async () => {
-
-    if (!input.trim() || loading) {
-      return;
-    }
-
-    const userMessage: Message = {
-      id: uuidv4(),
-      role: "user",
-      content: input,
-    };
-
-    setMessages((prev) => [
-      ...prev,
-      userMessage,
-    ]);
-
-    const currentInput = input;
-
+    const text = input.trim();
+    if (!text || loading) return;
     setInput("");
 
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: text,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
 
-    try {
-
-      const response = await askQuestion({
-        query: currentInput,
-        session_id: sessionId,
-      });
-
-      const assistantMessage: Message = {
-        id: uuidv4(),
-        role: "assistant",
-        content: response.answer,
-      };
-
-      setMessages((prev) => [
-        ...prev,
-        assistantMessage,
-      ]);
-
-    } catch (error) {
-
-      const errorMessage: Message = {
-        id: uuidv4(),
+    // Simulate response — replace with real API call
+    setTimeout(() => {
+      const assistantMsg: Message = {
+        id: crypto.randomUUID(),
         role: "assistant",
         content:
-          "Failed to connect to backend.",
+          "I found relevant information in your documents. Based on the retrieved context, here is a grounded answer with citations from the indexed PDFs. This demonstrates the full-width layout working correctly across the entire viewport.",
+        timestamp: new Date(),
       };
-
-      setMessages((prev) => [
-        ...prev,
-        errorMessage,
-      ]);
-
-      console.error(error);
-
-    } finally {
-
+      setMessages((prev) => [...prev, assistantMsg]);
       setLoading(false);
-
-    }
-
+    }, 1200);
   };
 
-  // ====================================================
-  // UI
-  // ====================================================
-
   return (
-
-    <div
-      className="
-        flex
-        h-screen
-        bg-[#020817]
-        text-white
-        overflow-hidden
-      "
-    >
-
-      {/* SIDEBAR */}
-
-      <Sidebar />
-
-      {/* MAIN CHAT AREA */}
-
-      <main
-        className="
-          flex-1
-          flex
-          flex-col
-          overflow-hidden
-        "
-      >
-
-        {/* HEADER */}
-
-        <header
-          className="
-            border-b
-            border-border
-            px-10
-            py-6
-            bg-primary/80
-            backdrop-blur-xl
-          "
-        >
-
-          <h1
-            className="
-              text-2xl
-              font-bold
-            "
-          >
-            AI Research Chat
-          </h1>
-
-          <p
-            className="
-              text-sm
-              text-gray-400
-              mt-1
-            "
-          >
-            Conversational Retrieval-Augmented Generation
-          </p>
-
-        </header>
-
-        {/* CHAT CONTENT */}
-
+    <div className="flex flex-col w-full h-full min-w-0 overflow-hidden">
+      {/* Scrollable message area */}
+      <div className="flex-1 overflow-y-auto min-h-0 w-full">
         {messages.length === 0 ? (
-
-          <div className="flex-1">
-
-            <EmptyState />
-
-          </div>
-
+          <EmptyState onPromptClick={(p) => { setInput(p); }} />
         ) : (
-
-          <ChatWindow>
-
-            {messages.map((message) => (
-
-              <ChatMessage
-                key={message.id}
-                role={message.role}
-                content={message.content}
-              />
-
-            ))}
-
-            {loading && (
-              <TypingIndicator />
-            )}
-
-          </ChatWindow>
-
+          <ChatWindow messages={messages} loading={loading} />
         )}
+      </div>
 
-        {/* INPUT */}
-
+      {/* Pinned input */}
+      <div className="flex-shrink-0 w-full border-t border-[#1a1a1a] bg-[#0a0a0a]">
         <ChatInput
-          input={input}
-          setInput={setInput}
-          onSend={handleSend}
+          value={input}
+          onChange={setInput}
+          onSubmit={handleSend}
           loading={loading}
         />
-
-      </main>
-
+      </div>
     </div>
   );
 }
